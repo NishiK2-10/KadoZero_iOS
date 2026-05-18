@@ -28,7 +28,7 @@ struct AnalyzeRequest: Codable {
 
 // MARK: - レスポンス（サーバー → アプリに返ってくるデータ）
 
-struct AnalyzeResponse: Codable {
+struct AnalyzeResponse: Codable, Identifiable {
     let messageId: String
     let shouldReview: Bool
     let severity: String
@@ -38,6 +38,8 @@ struct AnalyzeResponse: Codable {
     let suggestedText: String
     let reasons: [String]
     let analysisSummary: String
+
+    var id: String { messageId }
     
     enum CodingKeys: String, CodingKey {
         case messageId = "message_id"

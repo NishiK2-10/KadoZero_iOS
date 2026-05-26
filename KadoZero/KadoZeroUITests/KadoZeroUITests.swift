@@ -10,30 +10,32 @@ import XCTest
 final class KadoZeroUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        // セットアップ処理を実行
+        // 各テストメソッド実行前に呼び出し
 
-        // In UI tests it is usually best to stop immediately when a failure occurs.
+        // 失敗時の即停止を設定
         continueAfterFailure = false
 
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+        // テスト開始前の初期状態を設定（画面向きなど）
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        // クリーンアップ処理を実行
+        // 各テストメソッド実行後に呼び出し
     }
 
     @MainActor
     func testExample() throws {
-        // UI tests must launch the application that they test.
+        // UIテスト対象アプリを起動
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // XCTAssert で結果を検証
     }
 
     @MainActor
     func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
+        // アプリ起動時間を計測
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             XCUIApplication().launch()
         }

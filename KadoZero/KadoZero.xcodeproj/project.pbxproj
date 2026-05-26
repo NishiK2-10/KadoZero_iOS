@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		080D89E52FBAF10000F2C000 /* Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 080D89E42FBAF10000F2C000 /* Debug.xcconfig */; };
+		080D89E72FBAF10D00F2C000 /* Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 080D89E62FBAF10D00F2C000 /* Release.xcconfig */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		082C155D2F971181005CF1FF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,14 +29,29 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		080D89E42FBAF10000F2C000 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		080D89E62FBAF10D00F2C000 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		082C154F2F97117F005CF1FF /* KadoZero.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KadoZero.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		082C155C2F971181005CF1FF /* KadoZeroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KadoZeroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		082C15662F971181005CF1FF /* KadoZeroUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KadoZeroUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		089EF5D52FC0482600BEE19A /* Exceptions for "KadoZero" folder in "KadoZero" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 082C154E2F97117F005CF1FF /* KadoZero */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		082C15512F97117F005CF1FF /* KadoZero */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				089EF5D52FC0482600BEE19A /* Exceptions for "KadoZero" folder in "KadoZero" target */,
+			);
 			path = KadoZero;
 			sourceTree = "<group>";
 		};
@@ -79,6 +99,8 @@
 				082C155F2F971181005CF1FF /* KadoZeroTests */,
 				082C15692F971181005CF1FF /* KadoZeroUITests */,
 				082C15502F97117F005CF1FF /* Products */,
+				080D89E42FBAF10000F2C000 /* Debug.xcconfig */,
+				080D89E62FBAF10D00F2C000 /* Release.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -212,6 +234,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				080D89E52FBAF10000F2C000 /* Debug.xcconfig in Resources */,
+				080D89E72FBAF10D00F2C000 /* Release.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,6 +295,7 @@
 /* Begin XCBuildConfiguration section */
 		082C156E2F971181005CF1FF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 080D89E42FBAF10000F2C000 /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -335,6 +360,7 @@
 		};
 		082C156F2F971181005CF1FF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 080D89E62FBAF10D00F2C000 /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -392,6 +418,7 @@
 		};
 		082C15712F971181005CF1FF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 080D89E42FBAF10000F2C000 /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -400,14 +427,21 @@
 				DEVELOPMENT_TEAM = 2LN7M6KTA4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KadoZero/Info.plist;
+				INFOPLIST_KEY_API_BASE_URL = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				KADOZERO_API_BASE_URL = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/backend/.venv/lib/python3.11/site-packages/pydantic_core",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nishik.KadoZero;
@@ -424,6 +458,7 @@
 		};
 		082C15722F971181005CF1FF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 080D89E62FBAF10D00F2C000 /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -432,14 +467,21 @@
 				DEVELOPMENT_TEAM = 2LN7M6KTA4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KadoZero/Info.plist;
+				INFOPLIST_KEY_API_BASE_URL = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				KADOZERO_API_BASE_URL = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/backend/.venv/lib/python3.11/site-packages/pydantic_core",
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.nishik.KadoZero;

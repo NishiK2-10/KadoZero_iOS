@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct KadoZeroApp: App {
+    @State private var session = AuthSessionStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            LaunchView(session: session)
         }
     }
 }

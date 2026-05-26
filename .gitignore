@@ -3,3 +3,9 @@ xcuserdata/
 build/
 DerivedData/
 .DS_Store
+KadoZero/backend/.venv/
+KadoZero/backend/.envKadoZero/backend/app/__pycache__/
+
+KadoZero/backend/.venv/
+KadoZero/backend/.env
+KadoZero/backend/app/__pycache__/

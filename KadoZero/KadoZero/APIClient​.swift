@@ -127,17 +127,169 @@ final class APIClient {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         try Self.validateHTTPResponse(response)
-        return try JSONDecoder().decode([ConversationSummary].self, from: data)
+        return try Self.jsonDecoder.decode([ConversationSummary].self, from: data)
+    }
+
+    func fetchFriends(accessToken: String) async throws -> [FriendSummary] {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/friends") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
+        return try Self.jsonDecoder.decode([FriendSummary].self, from: data)
+    }
+
+    func addFriend(accessToken: String, userID: String) async throws -> FriendSummary {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/friends") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(FriendAddRequest(userID: userID))
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
+        return try Self.jsonDecoder.decode(FriendSummary.self, from: data)
+    }
+
+    func removeFriend(accessToken: String, friendUserID: String) async throws {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/friends/\(friendUserID)") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
+    }
+
+    func createConversation(
+        accessToken: String,
+        kind: String,
+        memberIDs: [String],
+        title: String? = nil
+    ) async throws -> ConversationSummary {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/conversations") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(
+            ConversationCreateRequest(kind: kind, memberIds: memberIDs, title: title)
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
+        return try Self.jsonDecoder.decode(ConversationSummary.self, from: data)
+    }
+
+    func fetchMessages(accessToken: String, conversationID: String) async throws -> [MessageDTO] {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID)/messages") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
+        return try Self.jsonDecoder.decode([MessageDTO].self, from: data)
+    }
+
+    func sendMessage(
+        accessToken: String,
+        conversationID: String,
+        clientMessageID: String,
+        body: String,
+        originalBody: String?
+    ) async throws -> MessageDTO {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID)/messages") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(
+            MessageCreateRequest(
+                clientMessageId: clientMessageID,
+                body: body,
+                originalBody: originalBody,
+                kind: "text"
+            )
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
+        return try Self.jsonDecoder.decode(MessageDTO.self, from: data)
+    }
+
+    func deleteConversation(accessToken: String, conversationID: String) async throws {
+        guard Self.isUsableURL(baseURL) else {
+            throw APIClientError.missingOrInvalidBaseURL(baseURL)
+        }
+        guard let url = URL(string: "\(baseURL)/v1/conversations/\(conversationID)") else {
+            throw APIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try Self.validateHTTPResponse(response)
     }
 
     private static func validateHTTPResponse(_ response: URLResponse) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIClientError.invalidResponse
         }
+        if httpResponse.statusCode == 401 {
+            throw APIClientError.unauthorized
+        }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw APIClientError.httpStatus(code: httpResponse.statusCode)
         }
     }
+
+    private static let jsonDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 
     private static func isUsableURL(_ value: String) -> Bool {
         guard !value.isEmpty else { return false }
@@ -151,6 +303,7 @@ final class APIClient {
 enum APIClientError: LocalizedError {
     case invalidURL
     case invalidResponse
+    case unauthorized
     case httpStatus(code: Int)
     case missingOrInvalidBaseURL(String)
 
@@ -160,6 +313,8 @@ enum APIClientError: LocalizedError {
             return "API URLが不正です。"
         case .invalidResponse:
             return "サーバー応答を解釈できませんでした。"
+        case .unauthorized:
+            return "認証の有効期限が切れました。再ログインしてください。"
         case .httpStatus(let code):
             return "サーバーエラーが発生しました。(HTTP \(code))"
         case .missingOrInvalidBaseURL(let value):
@@ -168,5 +323,21 @@ enum APIClientError: LocalizedError {
             }
             return "KADOZERO_API_BASE_URL が不正です: \(value)"
         }
+    }
+}
+
+extension APIClientError {
+    static func isUnauthorized(_ error: Error) -> Bool {
+        if let apiError = error as? APIClientError {
+            switch apiError {
+            case .unauthorized:
+                return true
+            case .httpStatus(let code):
+                return code == 401
+            default:
+                return false
+            }
+        }
+        return false
     }
 }

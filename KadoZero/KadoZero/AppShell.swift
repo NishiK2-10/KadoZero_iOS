@@ -234,12 +234,12 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
-            ChatListView()
+            ChatListView(session: session)
                 .tabItem {
                     Label("チャット", systemImage: "message")
                 }
 
-            FriendListView()
+            FriendListView(session: session)
                 .tabItem {
                     Label("友だち", systemImage: "person.2")
                 }
@@ -253,38 +253,301 @@ struct MainTabView: View {
 }
 
 struct ChatListView: View {
+    @Bindable var session: AuthSessionStore
+    @State private var conversations: [ConversationSummary] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    private let client = APIClient()
+
+    private var accessToken: String? {
+        session.accessToken
+    }
+
+    private var currentUserID: String? {
+        session.currentUser?.id
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                NavigationLink {
-                    ContentView()
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("テスト会話")
-                            .font(.headline)
-                        Text("ここから通訳付きチャットを開始")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                Section("テスト") {
+                    NavigationLink {
+                        ContentView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("テストチャット")
+                                .font(.headline)
+                            Text("ローカル検証用（1件固定）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    .padding(.vertical, 4)
+                }
+
+                Section("トーク") {
+                    ForEach(conversations) { conversation in
+                        if let token = accessToken, let userID = currentUserID {
+                            NavigationLink {
+                                ConversationView(
+                                    viewModel: ConversationViewModel(
+                                        accessToken: token,
+                                        conversationID: conversation.id,
+                                        currentUserID: userID,
+                                        onUnauthorized: { session.logout() }
+                                    ),
+                                    title: conversation.title ?? "会話"
+                                )
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(conversation.title ?? "会話")
+                                        .font(.headline)
+                                    Text(conversation.lastMessage ?? "メッセージはまだありません")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .lineLimit(1)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    Task { await deleteConversation(conversationID: conversation.id) }
+                                } label: {
+                                    Label("削除", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle("チャット")
+            .overlay {
+                if isLoading {
+                    ProgressView("読み込み中...")
+                } else if conversations.isEmpty {
+                    ContentUnavailableView("会話がありません", systemImage: "message")
+                }
+            }
+            .task {
+                await reload()
+            }
+            .refreshable {
+                await reload()
+            }
+            .alert("エラー", isPresented: .constant(errorMessage != nil)) {
+                Button("OK") {
+                    errorMessage = nil
+                }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    private func reload() async {
+        guard let token = accessToken else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            conversations = try await client.fetchConversations(accessToken: token)
+        } catch {
+            if APIClientError.isUnauthorized(error) {
+                session.logout()
+                return
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func deleteConversation(conversationID: String) async {
+        guard let token = accessToken else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await client.deleteConversation(accessToken: token, conversationID: conversationID)
+            conversations = try await client.fetchConversations(accessToken: token)
+        } catch {
+            if APIClientError.isUnauthorized(error) {
+                session.logout()
+                return
+            }
+            errorMessage = error.localizedDescription
         }
     }
 }
 
 struct FriendListView: View {
+    @Bindable var session: AuthSessionStore
+    @State private var friends: [FriendSummary] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var activeConversation: ConversationSummary?
+    @State private var isStartingConversation = false
+    @State private var isPresentingAddFriend = false
+    @State private var friendUserIDInput = ""
+    private let client = APIClient()
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
-                Image(systemName: "person.2")
-                    .font(.system(size: 40))
-                    .foregroundColor(.secondary)
-                Text("友だち機能は次段で実装")
-                    .foregroundColor(.secondary)
+            List(friends) { friend in
+                Button {
+                    Task { await startDM(with: friend) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(friend.displayName)
+                            .font(.headline)
+                        Text(friend.handle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .disabled(isStartingConversation)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task { await removeFriend(friendID: friend.id) }
+                    } label: {
+                        Label("削除", systemImage: "trash")
+                    }
+                }
             }
             .navigationTitle("友だち")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        friendUserIDInput = ""
+                        isPresentingAddFriend = true
+                    } label: {
+                        Image(systemName: "person.badge.plus")
+                    }
+                }
+            }
+            .overlay {
+                if isLoading {
+                    ProgressView("読み込み中...")
+                } else if friends.isEmpty {
+                    ContentUnavailableView("友だちがいません", systemImage: "person.2")
+                }
+            }
+            .task {
+                await loadFriends()
+            }
+            .refreshable {
+                await loadFriends()
+            }
+            .navigationDestination(item: $activeConversation) { conversation in
+                if let token = session.accessToken, let userID = session.currentUser?.id {
+                    ConversationView(
+                        viewModel: ConversationViewModel(
+                            accessToken: token,
+                            conversationID: conversation.id,
+                            currentUserID: userID,
+                            onUnauthorized: { session.logout() }
+                        ),
+                        title: conversation.title ?? "会話"
+                    )
+                } else {
+                    Text("セッションが無効です")
+                }
+            }
+            .alert("エラー", isPresented: .constant(errorMessage != nil)) {
+                Button("OK") {
+                    errorMessage = nil
+                }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+            .sheet(isPresented: $isPresentingAddFriend) {
+                NavigationStack {
+                    Form {
+                        Section("友だちのユーザーID") {
+                            TextField("例: cb726bc5-e15b-4444-ab81-c3a7d3b4e7dc", text: $friendUserIDInput)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        }
+                    }
+                    .navigationTitle("友だち追加")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("キャンセル") {
+                                isPresentingAddFriend = false
+                            }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("追加") {
+                                Task { await addFriend() }
+                            }
+                            .disabled(friendUserIDInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadFriends() async {
+        guard let token = session.accessToken else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            friends = try await client.fetchFriends(accessToken: token)
+        } catch {
+            if APIClientError.isUnauthorized(error) {
+                session.logout()
+                return
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func startDM(with friend: FriendSummary) async {
+        guard let token = session.accessToken else { return }
+        isStartingConversation = true
+        defer { isStartingConversation = false }
+        do {
+            let conversation = try await client.createConversation(
+                accessToken: token,
+                kind: "dm",
+                memberIDs: [friend.id],
+                title: friend.displayName
+            )
+            activeConversation = conversation
+        } catch {
+            if APIClientError.isUnauthorized(error) {
+                session.logout()
+                return
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func addFriend() async {
+        guard let token = session.accessToken else { return }
+        let userID = friendUserIDInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !userID.isEmpty else { return }
+        do {
+            _ = try await client.addFriend(accessToken: token, userID: userID)
+            isPresentingAddFriend = false
+            await loadFriends()
+        } catch {
+            if APIClientError.isUnauthorized(error) {
+                session.logout()
+                return
+            }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func removeFriend(friendID: String) async {
+        guard let token = session.accessToken else { return }
+        do {
+            try await client.removeFriend(accessToken: token, friendUserID: friendID)
+            await loadFriends()
+        } catch {
+            if APIClientError.isUnauthorized(error) {
+                session.logout()
+                return
+            }
+            errorMessage = error.localizedDescription
         }
     }
 }
@@ -300,6 +563,9 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(me.displayName)
                                 .font(.headline)
+                            Text(me.id)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                             Text(me.email)
                                 .font(.caption)
                                 .foregroundColor(.secondary)

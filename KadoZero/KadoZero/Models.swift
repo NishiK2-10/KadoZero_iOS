@@ -110,7 +110,7 @@ struct AuthResponse: Codable {
 
 // MARK: - 会話一覧
 
-struct ConversationSummary: Codable, Identifiable {
+struct ConversationSummary: Codable, Identifiable, Hashable {
     let id: String
     let kind: String
     let title: String?
@@ -123,5 +123,71 @@ struct ConversationSummary: Codable, Identifiable {
         case title
         case lastMessage = "last_message"
         case unreadCount = "unread_count"
+    }
+}
+
+struct ConversationCreateRequest: Codable {
+    let kind: String
+    let memberIds: [String]
+    let title: String?
+
+    enum CodingKeys: String, CodingKey {
+        case kind
+        case memberIds = "member_ids"
+        case title
+    }
+}
+
+struct MessageDTO: Codable, Identifiable {
+    let id: String
+    let conversationId: String
+    let senderId: String
+    let body: String
+    let originalBody: String?
+    let kind: String
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case conversationId = "conversation_id"
+        case senderId = "sender_id"
+        case body
+        case originalBody = "original_body"
+        case kind
+        case createdAt = "created_at"
+    }
+}
+
+struct MessageCreateRequest: Codable {
+    let clientMessageId: String
+    let body: String
+    let originalBody: String?
+    let kind: String
+
+    enum CodingKeys: String, CodingKey {
+        case clientMessageId = "client_message_id"
+        case body
+        case originalBody = "original_body"
+        case kind
+    }
+}
+
+struct FriendSummary: Codable, Identifiable {
+    let id: String
+    let handle: String
+    let displayName: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case handle
+        case displayName = "display_name"
+    }
+}
+
+struct FriendAddRequest: Codable {
+    let userID: String
+
+    enum CodingKeys: String, CodingKey {
+        case userID = "user_id"
     }
 }

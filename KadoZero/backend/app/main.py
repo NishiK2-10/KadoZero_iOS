@@ -16,7 +16,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from .db import Base, SessionLocal, engine
-from .db_models import RefreshToken, User
+from .db_models import Conversation, ConversationMember, Friendship, Message, RefreshToken, User
 from .security import (
     create_access_token,
     create_refresh_token,
@@ -96,6 +96,46 @@ class AuthResponse(BaseModel):
     user: MeResponse
     access_token: str
     refresh_token: str
+
+class FriendSummaryResponse(BaseModel):
+    id: str
+    handle: str
+    display_name: str
+
+
+class FriendAddRequest(BaseModel):
+    user_id: str
+
+
+class ConversationCreateRequest(BaseModel):
+    kind: str
+    member_ids: list[str]
+    title: str | None = None
+
+
+class ConversationSummaryResponse(BaseModel):
+    id: str
+    kind: str
+    title: str | None
+    last_message: str | None
+    unread_count: int
+
+
+class MessageCreateRequest(BaseModel):
+    client_message_id: str
+    body: str
+    original_body: str | None = None
+    kind: str = "text"
+
+
+class MessageResponse(BaseModel):
+    id: str
+    conversation_id: str
+    sender_id: str
+    body: str
+    original_body: str | None = None
+    kind: str
+    created_at: datetime
 
 
 def get_db():
@@ -316,6 +356,322 @@ def me(authorization: str | None = Header(default=None), db: Session = Depends(g
         handle=user.handle,
         display_name=user.display_name,
         email=user.email,
+    )
+
+
+@app.get("/v1/friends", response_model=list[FriendSummaryResponse])
+def list_friends(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> list[FriendSummaryResponse]:
+    me_user = _current_user_from_header(authorization, db)
+
+    friend_ids = db.scalars(
+        select(Friendship.friend_user_id).where(Friendship.user_id == me_user.id)
+    ).all()
+    if not friend_ids:
+        return []
+
+    rows = db.scalars(
+        select(User)
+        .where(
+            and_(
+                User.deleted_at.is_(None),
+                User.id.in_(list(friend_ids)),
+            )
+        )
+        .order_by(User.handle.asc())
+    ).all()
+    return [
+        FriendSummaryResponse(
+            id=row.id,
+            handle=row.handle,
+            display_name=row.display_name,
+        )
+        for row in rows
+    ]
+
+
+@app.post("/v1/friends", response_model=FriendSummaryResponse)
+def add_friend(
+    payload: FriendAddRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> FriendSummaryResponse:
+    me_user = _current_user_from_header(authorization, db)
+    target_id = payload.user_id.strip()
+    if not target_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+    if target_id == me_user.id:
+        raise HTTPException(status_code=400, detail="cannot add yourself")
+
+    target_user = db.get(User, target_id)
+    if not target_user or target_user.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="user not found")
+
+    existing = db.scalar(
+        select(Friendship).where(
+            and_(
+                Friendship.user_id == me_user.id,
+                Friendship.friend_user_id == target_id,
+            )
+        )
+    )
+    if not existing:
+        db.add(Friendship(user_id=me_user.id, friend_user_id=target_id))
+        db.commit()
+
+    return FriendSummaryResponse(
+        id=target_user.id,
+        handle=target_user.handle,
+        display_name=target_user.display_name,
+    )
+
+
+@app.delete("/v1/friends/{friend_user_id}")
+def remove_friend(
+    friend_user_id: str,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    me_user = _current_user_from_header(authorization, db)
+    row = db.scalar(
+        select(Friendship).where(
+            and_(
+                Friendship.user_id == me_user.id,
+                Friendship.friend_user_id == friend_user_id,
+            )
+        )
+    )
+    if row:
+        db.delete(row)
+        db.commit()
+    return {"status": "ok"}
+
+
+def _ensure_member(db: Session, conversation_id: str, user_id: str) -> None:
+    row = db.scalar(
+        select(ConversationMember).where(
+            and_(
+                ConversationMember.conversation_id == conversation_id,
+                ConversationMember.user_id == user_id,
+            )
+        )
+    )
+    if not row:
+        raise HTTPException(status_code=403, detail="not a conversation member")
+
+
+@app.post("/v1/conversations", response_model=ConversationSummaryResponse)
+def create_conversation(
+    payload: ConversationCreateRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> ConversationSummaryResponse:
+    user = _current_user_from_header(authorization, db)
+    kind = payload.kind.strip().lower()
+    if kind != "dm":
+        raise HTTPException(status_code=400, detail="only dm conversations are supported")
+    if len(payload.member_ids) != 1:
+        raise HTTPException(status_code=400, detail="dm requires exactly one friend user id")
+
+    member_ids = set(payload.member_ids)
+    member_ids.add(user.id)
+    if len(member_ids) != 2:
+        raise HTTPException(status_code=400, detail="invalid member set")
+
+    # 同じ2人なら既存会話を再利用
+    user_conversations = db.scalars(
+        select(ConversationMember.conversation_id).where(
+            ConversationMember.user_id.in_(list(member_ids))
+        )
+    ).all()
+    for conv_id in set(user_conversations):
+        members = db.scalars(
+            select(ConversationMember.user_id).where(ConversationMember.conversation_id == conv_id)
+        ).all()
+        if set(members) == member_ids:
+            conv = db.get(Conversation, conv_id)
+            if conv and conv.kind == "dm":
+                return ConversationSummaryResponse(
+                    id=conv.id,
+                    kind=conv.kind,
+                    title=conv.title,
+                    last_message=None,
+                    unread_count=0,
+                )
+
+    conv = Conversation(
+        id=str(uuid.uuid4()),
+        kind=kind,
+        title=payload.title.strip() if payload.title else None,
+        created_by=user.id,
+    )
+    db.add(conv)
+    db.flush()
+
+    for uid in member_ids:
+        exists = db.get(User, uid)
+        if not exists:
+            db.rollback()
+            raise HTTPException(status_code=404, detail=f"user not found: {uid}")
+        db.add(
+            ConversationMember(
+                conversation_id=conv.id,
+                user_id=uid,
+                role="owner" if uid == user.id else "member",
+            )
+        )
+
+    db.commit()
+    return ConversationSummaryResponse(
+        id=conv.id,
+        kind=conv.kind,
+        title=conv.title,
+        last_message=None,
+        unread_count=0,
+    )
+
+
+@app.delete("/v1/conversations/{conversation_id}")
+def delete_conversation(
+    conversation_id: str,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    user = _current_user_from_header(authorization, db)
+    _ensure_member(db, conversation_id, user.id)
+
+    conv = db.get(Conversation, conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="conversation not found")
+
+    db.delete(conv)
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.get("/v1/conversations", response_model=list[ConversationSummaryResponse])
+def list_conversations(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> list[ConversationSummaryResponse]:
+    user = _current_user_from_header(authorization, db)
+    member_rows = db.scalars(
+        select(ConversationMember).where(ConversationMember.user_id == user.id)
+    ).all()
+
+    result: list[ConversationSummaryResponse] = []
+    for member in member_rows:
+        conv = db.get(Conversation, member.conversation_id)
+        if not conv:
+            continue
+        last_msg = db.scalar(
+            select(Message.body)
+            .where(
+                and_(
+                    Message.conversation_id == conv.id,
+                    Message.deleted_at.is_(None),
+                )
+            )
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        result.append(
+            ConversationSummaryResponse(
+                id=conv.id,
+                kind=conv.kind,
+                title=conv.title,
+                last_message=last_msg,
+                unread_count=0,
+            )
+        )
+    result.sort(key=lambda x: x.id, reverse=True)
+    return result
+
+
+@app.get("/v1/conversations/{conversation_id}/messages", response_model=list[MessageResponse])
+def list_messages(
+    conversation_id: str,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> list[MessageResponse]:
+    user = _current_user_from_header(authorization, db)
+    _ensure_member(db, conversation_id, user.id)
+
+    rows = db.scalars(
+        select(Message)
+        .where(
+            and_(
+                Message.conversation_id == conversation_id,
+                Message.deleted_at.is_(None),
+            )
+        )
+        .order_by(Message.created_at.asc())
+    ).all()
+    return [
+        MessageResponse(
+            id=row.id,
+            conversation_id=row.conversation_id,
+            sender_id=row.sender_id,
+            body=row.body,
+            original_body=row.original_body,
+            kind=row.kind,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
+@app.post("/v1/conversations/{conversation_id}/messages", response_model=MessageResponse)
+def create_message(
+    conversation_id: str,
+    payload: MessageCreateRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    user = _current_user_from_header(authorization, db)
+    _ensure_member(db, conversation_id, user.id)
+
+    existing = db.scalar(
+        select(Message).where(
+            and_(
+                Message.conversation_id == conversation_id,
+                Message.client_message_id == payload.client_message_id,
+            )
+        )
+    )
+    if existing:
+        return MessageResponse(
+            id=existing.id,
+            conversation_id=existing.conversation_id,
+            sender_id=existing.sender_id,
+            body=existing.body,
+            original_body=existing.original_body,
+            kind=existing.kind,
+            created_at=existing.created_at,
+        )
+
+    row = Message(
+        id=str(uuid.uuid4()),
+        conversation_id=conversation_id,
+        sender_id=user.id,
+        client_message_id=payload.client_message_id,
+        body=payload.body,
+        original_body=payload.original_body,
+        kind=payload.kind,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return MessageResponse(
+        id=row.id,
+        conversation_id=row.conversation_id,
+        sender_id=row.sender_id,
+        body=row.body,
+        original_body=row.original_body,
+        kind=row.kind,
+        created_at=row.created_at,
     )
 
 

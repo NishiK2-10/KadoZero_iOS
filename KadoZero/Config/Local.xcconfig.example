@@ -1,0 +1,2 @@
+// Copy this file to Local.xcconfig and set your machine-specific values.
+API_BASE_URL = http://192.168.0.10:8000

@@ -35,7 +35,15 @@ final class AuthSessionStore {
             currentUser = result.user
             state = .authenticated
         } catch {
-            authErrorMessage = error.localizedDescription
+            // 401 は「未登録メール / パスワード不一致」をユーザー向け文言で表示
+            if APIClientError.isUnauthorized(error) {
+                accessToken = nil
+                currentUser = nil
+                state = .unauthenticated
+                authErrorMessage = "ユーザーが見つかりませんでした。メールアドレスかパスワードを確認してください。"
+            } else {
+                authErrorMessage = error.localizedDescription
+            }
         }
     }
 

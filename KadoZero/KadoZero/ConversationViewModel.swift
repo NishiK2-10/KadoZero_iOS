@@ -18,17 +18,20 @@ final class ConversationViewModel {
     private let conversationID: String
     private let currentUserID: String
     private let client: APIClient
+    private let onUnauthorized: @MainActor () -> Void
 
     init(
         accessToken: String,
         conversationID: String,
         currentUserID: String,
-        client: APIClient = APIClient()
+        client: APIClient = APIClient(),
+        onUnauthorized: @escaping @MainActor () -> Void = {}
     ) {
         self.accessToken = accessToken
         self.conversationID = conversationID
         self.currentUserID = currentUserID
         self.client = client
+        self.onUnauthorized = onUnauthorized
     }
 
     var isSendDisabled: Bool {
@@ -46,6 +49,10 @@ final class ConversationViewModel {
                 )
             }
         } catch {
+            if APIClientError.isUnauthorized(error) {
+                onUnauthorized()
+                return
+            }
             errorMessage = error.localizedDescription
         }
     }
@@ -83,6 +90,10 @@ final class ConversationViewModel {
 
             finalizeLocalMessage(localMessageID, convertedText: converted)
         } catch {
+            if APIClientError.isUnauthorized(error) {
+                onUnauthorized()
+                return
+            }
             errorMessage = error.localizedDescription
             finalizeLocalMessage(localMessageID, convertedText: originalText)
         }
@@ -94,4 +105,3 @@ final class ConversationViewModel {
         messages[index].isConverting = false
     }
 }
-

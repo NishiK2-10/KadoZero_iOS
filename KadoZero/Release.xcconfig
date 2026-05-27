@@ -1,2 +1,1 @@
-KADOZERO_API_HOST = 202.253.88.32:8000
 #include? "Local.xcconfig"

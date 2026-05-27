@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		080D89E52FBAF10000F2C000 /* Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 080D89E42FBAF10000F2C000 /* Debug.xcconfig */; };
 		080D89E72FBAF10D00F2C000 /* Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 080D89E62FBAF10D00F2C000 /* Release.xcconfig */; };
+		083EAE132FC6CD050068C718 /* Local.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 083EAE122FC6CCEF0068C718 /* Local.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,6 +35,7 @@
 		082C154F2F97117F005CF1FF /* KadoZero.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KadoZero.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		082C155C2F971181005CF1FF /* KadoZeroTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KadoZeroTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		082C15662F971181005CF1FF /* KadoZeroUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KadoZeroUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		083EAE122FC6CCEF0068C718 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -101,6 +103,7 @@
 				082C15502F97117F005CF1FF /* Products */,
 				080D89E42FBAF10000F2C000 /* Debug.xcconfig */,
 				080D89E62FBAF10D00F2C000 /* Release.xcconfig */,
+				083EAE122FC6CCEF0068C718 /* Local.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -234,6 +237,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				083EAE132FC6CD050068C718 /* Local.xcconfig in Resources */,
 				080D89E52FBAF10000F2C000 /* Debug.xcconfig in Resources */,
 				080D89E72FBAF10D00F2C000 /* Release.xcconfig in Resources */,
 			);
@@ -434,7 +438,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				KADOZERO_API_BASE_URL = "";
+				KADOZERO_API_BASE_URL = "https://kadozero-api.onrender.com";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -474,7 +478,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				KADOZERO_API_BASE_URL = "";
+				KADOZERO_API_BASE_URL = "https://kadozero-api.onrender.com";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

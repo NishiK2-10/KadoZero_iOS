@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>KADOZERO_API_BASE_URL</key>
-	<string>http://$(KADOZERO_API_HOST)</string>
+	<string>$(KADOZERO_API_BASE_URL)</string>
 </dict>
 </plist>
